@@ -849,7 +849,7 @@ static int wolfssl_bio_s_fixed_mem_write(WOLFSSL_BIO* bio, const char* data,
         if (bio->wrSz - bio->wrIdx < len) {
             len = bio->wrSz - bio->wrIdx;
         }
-        XMEMCPY(bio->ptr.mem_buf_data + bio->wrIdx, data, len);
+        XMEMCPY(bio->ptr.mem_buf_data + bio->wrIdx, data, (size_t)len);
         bio->wrIdx += len;
     }
 
@@ -865,7 +865,7 @@ static int wolfssl_bio_s_fixed_mem_read(WOLFSSL_BIO* bio, char* data, int len)
         if (bio->wrSz - bio->rdIdx < len) {
             len = bio->wrSz - bio->rdIdx;
         }
-        XMEMCPY(data, bio->ptr.mem_buf_data + bio->rdIdx, len);
+        XMEMCPY(data, bio->ptr.mem_buf_data + bio->rdIdx, (size_t)len);
         bio->rdIdx += len;
     }
 
@@ -2430,7 +2430,7 @@ static int test_wolfSSL_CTX_load_verify_locations(void)
     /* Get cert cache size */
     ExpectIntGT(cacheSz = wolfSSL_CTX_get_cert_cache_memsize(ctx), 0);
 
-    ExpectNotNull(cache = (byte*)XMALLOC(cacheSz, NULL,
+    ExpectNotNull(cache = (byte*)XMALLOC((size_t)cacheSz, NULL,
                             DYNAMIC_TYPE_TMP_BUFFER));
 
     ExpectIntEQ(wolfSSL_CTX_memsave_cert_cache(NULL, NULL, -1, NULL),
@@ -3223,7 +3223,7 @@ static int test_wolfSSL_CertManagerNameConstraint(void)
                 WOLFSSL_FILETYPE_ASN1));
     ExpectNotNull(pt = (byte*)wolfSSL_X509_get_tbs(x509, &derSz));
     if (EXPECT_SUCCESS() && (der != NULL)) {
-        XMEMCPY(der, pt, derSz);
+        XMEMCPY(der, pt, (size_t)derSz);
 
         /* find the name constraint extension and alter it */
         pt = der;

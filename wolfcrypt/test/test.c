@@ -828,7 +828,7 @@ static void render_error_message(const char* msg, wc_test_ret_t es)
 #else
         err_sys_printf("%s error L=%d code=%d (%s)\n", msg,
                        WC_TEST_RET_DEC_LN(es), -WC_TEST_RET_DEC_I(es),
-                       wolfSSL_ERR_reason_error_string(-WC_TEST_RET_DEC_I(es))
+                       wolfSSL_ERR_reason_error_string((unsigned long)-WC_TEST_RET_DEC_I(es))
             );
 #endif
         break;
@@ -9005,7 +9005,7 @@ static wc_test_ret_t EVP_test(const WOLFSSL_EVP_CIPHER* type, const byte* key,
         return MEMORY_E;
 #endif
 
-    cipher = (byte*)XMALLOC(plainSz, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+    cipher = (byte*)XMALLOC((size_t)plainSz, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
     if (cipher == NULL) {
         ret = WC_TEST_RET_ENC_ERRNO;
         goto EVP_TEST_END;
@@ -9031,7 +9031,7 @@ static wc_test_ret_t EVP_test(const WOLFSSL_EVP_CIPHER* type, const byte* key,
     }
     cipherSz += idx;
 
-    if (XMEMCMP(cipher, expected, plainSz)) {
+    if (XMEMCMP(cipher, expected, (size_t)plainSz)) {
         ret = WC_TEST_RET_ENC_NC;
         goto EVP_TEST_END;
     }

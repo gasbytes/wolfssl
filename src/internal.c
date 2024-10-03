@@ -7074,7 +7074,7 @@ void FreeHandshakeHashes(WOLFSSL* ssl)
          (defined(WOLFSSL_SM2) && defined(WOLFSSL_SM3))) && \
         !defined(WOLFSSL_NO_CLIENT_AUTH)
         if (ssl->hsHashes->messages != NULL) {
-            ForceZero(ssl->hsHashes->messages, ssl->hsHashes->length);
+            ForceZero(ssl->hsHashes->messages, (word32)ssl->hsHashes->length);
             XFREE(ssl->hsHashes->messages, ssl->heap, DYNAMIC_TYPE_HASHES);
             ssl->hsHashes->messages = NULL;
          }
@@ -7142,8 +7142,9 @@ int InitHandshakeHashesAndCopy(WOLFSSL* ssl, HS_Hashes* source,
          (defined(WOLFSSL_SM2) && defined(WOLFSSL_SM3))) && \
         !defined(WOLFSSL_NO_CLIENT_AUTH)
     if (ret == 0 && source->messages != NULL) {
-        (*destination)->messages = (byte*)XMALLOC(source->length, ssl->heap,
-            DYNAMIC_TYPE_HASHES);
+        (*destination)->messages = (byte*)XMALLOC((size_t)source->length,
+	    ssl->heap,
+            (size_t)DYNAMIC_TYPE_HASHES);
         (*destination)->length = source->length;
         (*destination)->prevLen = source->prevLen;
 
@@ -7152,7 +7153,7 @@ int InitHandshakeHashesAndCopy(WOLFSSL* ssl, HS_Hashes* source,
         }
         else {
             XMEMCPY((*destination)->messages, source->messages,
-                source->length);
+                (size_t)source->length);
         }
     }
     #endif

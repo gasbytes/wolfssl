@@ -6293,14 +6293,14 @@ void wolfSSL_EVP_init(void)
                 case AES_256_OFB_TYPE:
     #endif
                     wc_AesFree(&ctx->cipher.aes);
-                    ctx->flags &= ~WOLFSSL_EVP_CIPH_LOW_LEVEL_INITED;
+                    ctx->flags &= (long unsigned int)~WOLFSSL_EVP_CIPH_LOW_LEVEL_INITED;
                     break;
     #if defined(WOLFSSL_AES_XTS) && \
         (!defined(HAVE_FIPS) || FIPS_VERSION_GE(5,3))
                 case AES_128_XTS_TYPE:
                 case AES_256_XTS_TYPE:
                     wc_AesXtsFree(&ctx->cipher.xts);
-                    ctx->flags &= ~WOLFSSL_EVP_CIPH_LOW_LEVEL_INITED;
+                    ctx->flags &= (long unsigned int)~WOLFSSL_EVP_CIPH_LOW_LEVEL_INITED;
                     break;
     #endif
 #endif /* AES */

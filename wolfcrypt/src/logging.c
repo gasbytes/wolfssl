@@ -1171,7 +1171,7 @@ int wc_AddErrorNode(int error, int line, char* buf, char* file)
             sz = WOLFSSL_MAX_ERROR_SZ - 1;
         }
         if (sz > 0) {
-            XMEMCPY(err->error, buf, sz);
+            XMEMCPY(err->error, buf, (size_t)sz);
         }
 
         sz = (int)XSTRLEN(file);
@@ -1179,7 +1179,7 @@ int wc_AddErrorNode(int error, int line, char* buf, char* file)
             sz = WOLFSSL_MAX_ERROR_SZ - 1;
         }
         if (sz > 0) {
-            XMEMCPY(err->file, file, sz);
+            XMEMCPY(err->file, file, (size_t)sz);
         }
 
         err->value = error;
@@ -1420,7 +1420,7 @@ unsigned long wc_PeekErrorNodeLineData(const char **file, int *line,
     }
 }
 
-unsigned long wc_GetErrorNodeErr(void)
+int wc_GetErrorNodeErr(void)
 {
     int ret;
 
