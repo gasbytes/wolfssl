@@ -9592,7 +9592,7 @@ int DtlsMsgPoolSend(WOLFSSL* ssl, int sendOnlyFirstPacket)
 
                 WriteSEQ(ssl, epochOrder, dtls->sequence_number);
                 DtlsSEQIncrement(ssl, epochOrder);
-                if ((ret = CheckAvailableSize(ssl, pool->sz)) != 0) {
+                if ((ret = CheckAvailableSize(ssl, (int)pool->sz)) != 0) {
                     WOLFSSL_ERROR(ret);
                     return ret;
                 }

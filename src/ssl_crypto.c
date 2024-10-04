@@ -2543,21 +2543,22 @@ WOLFSSL_DES_LONG wolfSSL_DES_cbc_cksum(const unsigned char* in,
     if ((!err) && (dataSz % DES_BLOCK_SIZE)) {
         /* Allocate a buffer big enough to hold padded input. */
         dataSz += DES_BLOCK_SIZE - (dataSz % DES_BLOCK_SIZE);
-        data = (unsigned char*)XMALLOC(dataSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        data = (unsigned char*)XMALLOC((size_t)dataSz, NULL, 
+					DYNAMIC_TYPE_TMP_BUFFER);
         if (data == NULL) {
             WOLFSSL_MSG("Issue creating temporary buffer");
             err = 1;
         }
         else {
             /* Copy input and pad with 0s. */
-            XMEMCPY(data, in, length);
-            XMEMSET(data + length, 0, dataSz - length);
+            XMEMCPY(data, in, (size_t)length);
+            XMEMSET(data + length, 0, (size_t)(dataSz - length));
         }
     }
 
     if (!err) {
         /* Allocate buffer to hold encrypted data. */
-        tmp = (unsigned char*)XMALLOC(dataSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        tmp = (unsigned char*)XMALLOC((size_t)dataSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (tmp == NULL) {
             WOLFSSL_MSG("Issue creating temporary buffer");
             err = 1;
@@ -2637,7 +2638,7 @@ void wolfSSL_DES_cbc_encrypt(const unsigned char* input, unsigned char* output,
             if (lb_sz != 0) {
                 /* Create a 0 padded block from remaining bytes. */
                 XMEMSET(lastBlock, 0, DES_BLOCK_SIZE);
-                XMEMCPY(lastBlock, input + len, lb_sz);
+                XMEMCPY(lastBlock, input + len, (size_t)lb_sz);
                 /* Encrypt last block into output. */
                 wc_Des_CbcEncrypt(des, output + len, lastBlock,
                     (word32)DES_BLOCK_SIZE);
@@ -2651,7 +2652,7 @@ void wolfSSL_DES_cbc_encrypt(const unsigned char* input, unsigned char* output,
                 wc_Des_CbcDecrypt(des, lastBlock, input + len,
                     (word32)DES_BLOCK_SIZE);
                 /* Copy out the required amount of the decrypted block. */
-                XMEMCPY(output + len, lastBlock, lb_sz);
+                XMEMCPY(output + len, lastBlock, (size_t)lb_sz);
             }
         }
     }
@@ -2775,7 +2776,7 @@ void wolfSSL_DES_ede3_cbc_encrypt(const unsigned char* input,
                 if (lb_sz != 0) {
                     /* Create a 0 padded block from remaining bytes. */
                     XMEMSET(lastBlock, 0, DES_BLOCK_SIZE);
-                    XMEMCPY(lastBlock, input + len, lb_sz);
+                    XMEMCPY(lastBlock, input + len, (size_t)lb_sz);
                     /* Encrypt last block into output. */
                     ret = wc_Des3_CbcEncrypt(des3, output + len, lastBlock,
                         (word32)DES_BLOCK_SIZE);
@@ -2825,7 +2826,7 @@ void wolfSSL_DES_ede3_cbc_encrypt(const unsigned char* input,
                     (void)ret;
                 #endif
                     /* Copy out the required amount of the decrypted block. */
-                    XMEMCPY(output + len, lastBlock, lb_sz);
+                    XMEMCPY(output + len, lastBlock, (size_t)lb_sz);
                 }
             }
         }
@@ -2939,7 +2940,7 @@ static int wolfssl_aes_set_key(const unsigned char *key, const int bits,
         return WOLFSSL_FATAL_ERROR;
     }
 
-    if (wc_AesSetKey((Aes*)aes, key, ((bits)/8), NULL, enc) != 0) {
+    if (wc_AesSetKey((Aes*)aes, key, (word32)((bits)/8), NULL, enc) != 0) {
         WOLFSSL_MSG("Error in setting AES key");
         return WOLFSSL_FATAL_ERROR;
     }
@@ -3316,7 +3317,7 @@ size_t wolfSSL_CRYPTO_cts128_encrypt(const unsigned char *in,
     WOLFSSL_CBC128_CB cbc)
 {
     byte lastBlk[WOLFSSL_CTS128_BLOCK_SZ];
-    int lastBlkLen = len % WOLFSSL_CTS128_BLOCK_SZ;
+    size_t lastBlkLen = len % WOLFSSL_CTS128_BLOCK_SZ;
 
     WOLFSSL_ENTER("wolfSSL_CRYPTO_cts128_encrypt");
 
@@ -3371,7 +3372,7 @@ size_t wolfSSL_CRYPTO_cts128_decrypt(const unsigned char *in,
 {
     byte lastBlk[WOLFSSL_CTS128_BLOCK_SZ];
     byte prevBlk[WOLFSSL_CTS128_BLOCK_SZ];
-    int lastBlkLen = len % WOLFSSL_CTS128_BLOCK_SZ;
+    size_t lastBlkLen = len % WOLFSSL_CTS128_BLOCK_SZ;
 
     WOLFSSL_ENTER("wolfSSL_CRYPTO_cts128_decrypt");
 

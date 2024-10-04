@@ -271,7 +271,7 @@ static int wolfssl_i2d_asn1_items(const void* obj, byte* buf,
                 break;
             }
             innerLen = ret;
-            hdrLen = SetExplicit((byte)mem->tag, (word32)innerLen, buf, 0);
+            hdrLen = (int)SetExplicit((byte)mem->tag, (word32)innerLen, buf, 0);
             len += hdrLen;
             if (buf != NULL)
                 buf += hdrLen;
@@ -534,14 +534,14 @@ static int d2i_handle_tags(const WOLFSSL_ASN1_TEMPLATE* mem, const byte** src,
                 WOLFSSL_MSG("asn tag error");
                 return WOLFSSL_FATAL_ERROR;
             }
-            *asnLen += idx; /* total buffer length */
-            *impBuf = (byte*)XMALLOC(*asnLen, NULL,
+            *asnLen += (int)idx; /* total buffer length */
+            *impBuf = (byte*)XMALLOC((size_t)*asnLen, NULL,
                     DYNAMIC_TYPE_TMP_BUFFER);
             if (*impBuf == NULL) {
                 WOLFSSL_MSG("malloc error");
                 return WOLFSSL_FATAL_ERROR;
             }
-            XMEMCPY(*impBuf, *src, *asnLen);
+            XMEMCPY(*impBuf, *src, (size_t)*asnLen);
             (*impBuf)[0] = mem->first_byte;
         }
     }
@@ -927,7 +927,7 @@ WOLFSSL_ASN1_BIT_STRING* wolfSSL_d2i_ASN1_BIT_STRING(
         return NULL;
     }
 
-    XMEMCPY(ret->data, *src + idx, length);
+    XMEMCPY(ret->data, *src + idx, (size_t)length);
     *src += idx + (word32)length;
 
     if (out != NULL) {
@@ -2119,7 +2119,7 @@ int wolfssl_asn1_obj_set(WOLFSSL_ASN1_OBJECT* obj, const byte* der, word32 len,
     if (obj->obj != NULL) {
         XFREE((void*)obj->obj, obj->heap, DYNAMIC_TYPE_ASN1);
         obj->obj = NULL;
-        obj->dynamic &= ~WOLFSSL_ASN1_DYNAMIC_DATA;
+        obj->dynamic &= (unsigned char)~WOLFSSL_ASN1_DYNAMIC_DATA;
     }
 
     obj->obj =(unsigned char*)XMALLOC(idx + len, obj->heap, DYNAMIC_TYPE_ASN1);
@@ -2176,12 +2176,12 @@ WOLFSSL_ASN1_OBJECT *wolfSSL_d2i_ASN1_OBJECT(WOLFSSL_ASN1_OBJECT **a,
         return NULL;
     }
 
-    if (wolfssl_asn1_obj_set(ret, *der, idx + len, 0) != WOLFSSL_SUCCESS) {
+    if (wolfssl_asn1_obj_set(ret, *der, idx + (word32)len, 0) != WOLFSSL_SUCCESS) {
         wolfSSL_ASN1_OBJECT_free(ret);
         return NULL;
     }
 
-    *der += idx + len;
+    *der += idx + (word32)len;
     if (a != NULL) {
         if (*a != NULL)
             wolfSSL_ASN1_OBJECT_free(*a);
@@ -2829,13 +2829,14 @@ static int i2d_ASN1_STRING(WOLFSSL_ASN1_STRING* s,
     if (s == NULL || s->data == NULL || s->length == 0)
         return WOLFSSL_FATAL_ERROR;
 
-    len = SetHeader(tag, s->length, NULL, 0) + s->length;
+    len = (int)((word32)SetHeader(tag, (word32)s->length, NULL, 0) + 
+				(word32)s->length);
 
     if (pp == NULL)
         return len;
 
     if (*pp == NULL) {
-        out = (unsigned char*)XMALLOC(len, NULL, DYNAMIC_TYPE_ASN1);
+        out = (unsigned char*)XMALLOC((size_t)len, NULL, DYNAMIC_TYPE_ASN1);
         if (out == NULL)
             return WOLFSSL_FATAL_ERROR;
     }
@@ -2843,8 +2844,8 @@ static int i2d_ASN1_STRING(WOLFSSL_ASN1_STRING* s,
         out = *pp;
     }
 
-    idx = (int)SetHeader(tag, s->length, out, 0);
-    XMEMCPY(out + idx, s->data, s->length);
+    idx = (int)SetHeader(tag, (word32)s->length, out, 0);
+    XMEMCPY(out + idx, s->data, (size_t)s->length);
     if (*pp == NULL)
         *pp = out;
     else
@@ -2886,7 +2887,8 @@ int wolfSSL_i2d_ASN1_SEQUENCE(WOLFSSL_ASN1_STRING* s,
         return s->length;
 
     if (*pp == NULL) {
-        out = (unsigned char*)XMALLOC(s->length, NULL, DYNAMIC_TYPE_ASN1);
+        out = (unsigned char*)XMALLOC((size_t)s->length, 
+					NULL, DYNAMIC_TYPE_ASN1);
         if (out == NULL)
             return WOLFSSL_FATAL_ERROR;
     }
@@ -2894,7 +2896,7 @@ int wolfSSL_i2d_ASN1_SEQUENCE(WOLFSSL_ASN1_STRING* s,
         out = *pp;
     }
 
-    XMEMCPY(out, s->data, s->length);
+    XMEMCPY(out, s->data, (size_t)s->length);
     if (*pp == NULL)
         *pp = out;
     else
@@ -2937,7 +2939,7 @@ static WOLFSSL_ASN1_STRING* d2i_ASN1_STRING(WOLFSSL_ASN1_STRING** out,
             wolfSSL_ASN1_STRING_free(*out);
         *out = ret;
     }
-    *src += idx + length;
+    *src += idx + (word32)length;
 
     return ret;
 }
@@ -4117,7 +4119,7 @@ WOLFSSL_ASN1_TIME* wolfSSL_ASN1_TIME_to_generalizedtime(WOLFSSL_ASN1_TIME *t,
                 ret->data[0] = '2'; ret->data[1] = '0';
             }
             /* Append rest of the data as it is the same. */
-            XMEMCPY(&ret->data[2], t->data, t->length);
+            XMEMCPY(&ret->data[2], t->data, (size_t)t->length);
         }
 
         /* Check for pointer to return result through. */

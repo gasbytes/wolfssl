@@ -7430,7 +7430,7 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
                 /* replace the last 8 bytes of server random with the accept */
                 if (((WOLFSSL_ECH*)echX->data)->state == ECH_PARSED_INTERNAL) {
                     ret = EchWriteAcceptance(ssl, output + RECORD_HEADER_SZ,
-                        serverRandomOffset - RECORD_HEADER_SZ,
+                        (int)serverRandomOffset - RECORD_HEADER_SZ,
                         sendSz - RECORD_HEADER_SZ);
 
                     /* remove ech so we don't keep sending it in write */

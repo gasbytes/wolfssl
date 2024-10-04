@@ -4039,7 +4039,7 @@ int TLSX_CSR2_InitRequests(TLSX* extensions, DecodedCert* cert, byte isPeer,
 
                     /* restore nonce */
                     XMEMCPY(csr2->request.ocsp[csr2->requests].nonce,
-                                                                nonce, nonceSz);
+                                                        nonce, (size_t)nonceSz);
                     csr2->request.ocsp[csr2->requests].nonceSz = nonceSz;
                     csr2->requests++;
                 }
