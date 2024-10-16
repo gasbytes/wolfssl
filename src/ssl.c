@@ -18128,7 +18128,7 @@ int  wolfSSL_get_chain_cert_pem(WOLFSSL_X509_CHAIN* chain, int idx,
 		    (word32)chain->certs[idx].length,
                     NULL, &szNeeded) != WC_NO_ERR_TRACE(LENGTH_ONLY_E))
             return WOLFSSL_FAILURE;
-        *outLen = szNeeded + headerLen + footerLen;
+        *outLen = (int)szNeeded + headerLen + footerLen;
         return WC_NO_ERR_TRACE(LENGTH_ONLY_E);
     }
 
@@ -18137,7 +18137,7 @@ int  wolfSSL_get_chain_cert_pem(WOLFSSL_X509_CHAIN* chain, int idx,
         return BAD_FUNC_ARG;
 
     /* header */
-    if (XMEMCPY(buf, header, headerLen) == NULL)
+    if (XMEMCPY(buf, header, (size_t)headerLen) == NULL)
         return WOLFSSL_FATAL_ERROR;
 
     i = headerLen;
@@ -18145,14 +18145,15 @@ int  wolfSSL_get_chain_cert_pem(WOLFSSL_X509_CHAIN* chain, int idx,
     /* body */
     *outLen = inLen;  /* input to Base64_Encode */
     if ( (err = Base64_Encode(chain->certs[idx].buffer,
-                       chain->certs[idx].length, buf + i, (word32*)outLen)) < 0)
+                       (word32)chain->certs[idx].length, buf + i,
+						(word32*)outLen)) < 0)
         return err;
     i += *outLen;
 
     /* footer */
     if ( (i + footerLen) > inLen)
         return BAD_FUNC_ARG;
-    if (XMEMCPY(buf + i, footer, footerLen) == NULL)
+    if (XMEMCPY(buf + i, footer, (size_t)footerLen) == NULL)
         return WOLFSSL_FATAL_ERROR;
     *outLen += headerLen + footerLen;
 
@@ -18872,7 +18873,7 @@ void* wolfSSL_GetHKDFExtractCtx(WOLFSSL* ssl)
                 obj->dynamic |= WOLFSSL_ASN1_DYNAMIC_DATA;
             }
             else {
-                obj->dynamic &= ~WOLFSSL_ASN1_DYNAMIC_DATA;
+                obj->dynamic &= (unsigned char)~WOLFSSL_ASN1_DYNAMIC_DATA;
             }
         }
         XMEMCPY((byte*)obj->obj, objBuf, obj->objSz);
@@ -18987,7 +18988,7 @@ void* wolfSSL_GetHKDFExtractCtx(WOLFSSL* ssl)
             bufSz = bufLen - 1;
         }
         if (bufSz) {
-            XMEMCPY(buf, name, bufSz);
+            XMEMCPY(buf, name, (size_t)bufSz);
         }
         else if (a->type == GEN_DNS || a->type == GEN_EMAIL ||
                  a->type == GEN_URI) {
@@ -18998,7 +18999,7 @@ void* wolfSSL_GetHKDFExtractCtx(WOLFSSL* ssl)
             if ((desc = oid_translate_num_to_str(buf))) {
                 bufSz = (int)XSTRLEN(desc);
                 bufSz = (int)min((word32)bufSz,(word32) bufLen - 1);
-                XMEMCPY(buf, desc, bufSz);
+                XMEMCPY(buf, desc, (size_t)bufSz);
             }
         }
         else {
@@ -19154,19 +19155,21 @@ void* wolfSSL_GetHKDFExtractCtx(WOLFSSL* ssl)
 
         if (o->nid > 0)
             return o->nid;
-        if ((ret = GetObjectId(o->obj, &idx, &oid, o->grp, o->objSz)) < 0) {
+        if ((ret = GetObjectId(o->obj, &idx, &oid,
+				(word32)o->grp, o->objSz)) < 0) {
             if (ret == WC_NO_ERR_TRACE(ASN_OBJECT_ID_E)) {
                 /* Put ASN object tag in front and try again */
-                int len = SetObjectId(o->objSz, NULL) + o->objSz;
-                byte* buf = (byte*)XMALLOC(len, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                int len = SetObjectId((int)o->objSz, NULL) + (int)o->objSz;
+                byte* buf = (byte*)XMALLOC((size_t)len, NULL,
+						DYNAMIC_TYPE_TMP_BUFFER);
                 if (!buf) {
                     WOLFSSL_MSG("malloc error");
                     return WOLFSSL_FATAL_ERROR;
                 }
-                idx = SetObjectId(o->objSz, buf);
+                idx = (word32)SetObjectId((int)o->objSz, buf);
                 XMEMCPY(buf + idx, o->obj, o->objSz);
                 idx = 0;
-                ret = GetObjectId(buf, &idx, &oid, o->grp, len);
+                ret = GetObjectId(buf, &idx, &oid, (word32)o->grp, (word32)len);
                 XFREE(buf, NULL, DYNAMIC_TYPE_TMP_BUFFER);
                 if (ret < 0) {
                     WOLFSSL_MSG("Issue getting OID of object");
@@ -19305,13 +19308,13 @@ void* wolfSSL_GetHKDFExtractCtx(WOLFSSL* ssl)
             /* try as a short name */
             len = (int)XSTRLEN(s);
             if ((int)XSTRLEN(wolfssl_object_info[i].sName) == len &&
-                XSTRNCMP(wolfssl_object_info[i].sName, s, len) == 0) {
+                XSTRNCMP(wolfssl_object_info[i].sName, s, (word32)len) == 0) {
                 return wolfssl_object_info[i].nid;
             }
 
             /* try as a long name */
             if ((int)XSTRLEN(wolfssl_object_info[i].lName) == len &&
-                XSTRNCMP(wolfssl_object_info[i].lName, s, len) == 0) {
+                XSTRNCMP(wolfssl_object_info[i].lName, s, (word32)len) == 0) {
                 return wolfssl_object_info[i].nid;
             }
         }
@@ -19366,7 +19369,7 @@ void* wolfSSL_GetHKDFExtractCtx(WOLFSSL* ssl)
             obj->dynamic |= WOLFSSL_ASN1_DYNAMIC_DATA;
             i = SetObjectId((int)outSz, (byte*)obj->obj);
             XMEMCPY((byte*)obj->obj + i, out, outSz);
-            obj->objSz = i + outSz;
+            obj->objSz = (word32)i + outSz;
             return obj;
         }
 
@@ -20058,7 +20061,8 @@ WOLFSSL_EVP_PKEY* wolfSSL_d2i_PrivateKey_bio(WOLFSSL_BIO* bio,
         return NULL;
     }
 
-    mem = (unsigned char*)XMALLOC(memSz, bio->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    mem = (unsigned char*)XMALLOC((size_t)memSz, bio->heap,
+					DYNAMIC_TYPE_TMP_BUFFER);
     if (mem == NULL) {
         WOLFSSL_MSG("Malloc failure");
         return NULL;
@@ -20083,7 +20087,7 @@ WOLFSSL_EVP_PKEY* wolfSSL_d2i_PrivateKey_bio(WOLFSSL_BIO* bio,
             int i;
             int j = 0;
 
-            extraBioMem = (unsigned char *)XMALLOC(extraBioMemSz, NULL,
+            extraBioMem = (unsigned char *)XMALLOC((size_t)extraBioMemSz, NULL,
                                                        DYNAMIC_TYPE_TMP_BUFFER);
             if (extraBioMem == NULL) {
                 WOLFSSL_MSG("Malloc failure");
@@ -21866,13 +21870,13 @@ int set_curves_list(WOLFSSL* ssl, WOLFSSL_CTX *ctx, const char* names,
         if (len > MAX_CURVE_NAME_SZ - 1)
             goto leave;
 
-        XMEMCPY(name, names + start, len);
+        XMEMCPY(name, names + start, (size_t)len);
         name[len] = 0;
         curve = WOLFSSL_NAMED_GROUP_INVALID;
 
         for (nist_name = kNistCurves; nist_name->name != NULL; nist_name++) {
             if (len == nist_name->name_len &&
-                    XSTRNCMP(name, nist_name->name, len) == 0) {
+                    XSTRNCMP(name, nist_name->name, (size_t)len) == 0) {
                 curve = nist_name->curve;
                 break;
             }
@@ -21895,7 +21899,7 @@ int set_curves_list(WOLFSSL* ssl, WOLFSSL_CTX *ctx, const char* names,
                 goto leave;
             }
 
-            curve = GetCurveByOID(eccSet->oidSum);
+            curve = GetCurveByOID((int)eccSet->oidSum);
         #else
             WOLFSSL_MSG("API not present to search farther using name");
             goto leave;
