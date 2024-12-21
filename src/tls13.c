@@ -1024,7 +1024,7 @@ int Tls13_Exporter(WOLFSSL* ssl, unsigned char *out, size_t outLen,
     ret = Tls13HKDFExpandLabel(ssl, firstExpand, hashLen,
             ssl->arrays->exporterSecret, hashLen,
             protocol, protocolLen, (byte*)label, (word32)labelLen,
-            emptyHash, hashLen, hashType);
+            emptyHash, hashLen, (int)hashType);
     if (ret != 0)
         return ret;
 
@@ -1035,7 +1035,7 @@ int Tls13_Exporter(WOLFSSL* ssl, unsigned char *out, size_t outLen,
 
     ret = Tls13HKDFExpandLabel(ssl, out, (word32)outLen, firstExpand, hashLen,
             protocol, protocolLen, exporterLabel, EXPORTER_LABEL_SZ,
-            hashOut, hashLen, hashType);
+            hashOut, hashLen, (int)hashType);
 
     return ret;
 }
@@ -7436,7 +7436,7 @@ int SendTls13ServerHello(WOLFSSL* ssl, byte extMsgType)
                 /* replace the last 8 bytes of server random with the accept */
                 if (((WOLFSSL_ECH*)echX->data)->state == ECH_PARSED_INTERNAL) {
                     ret = EchWriteAcceptance(ssl, output + RECORD_HEADER_SZ,
-                        serverRandomOffset - RECORD_HEADER_SZ,
+                        (int)serverRandomOffset - RECORD_HEADER_SZ,
                         sendSz - RECORD_HEADER_SZ);
 
                     /* remove ech so we don't keep sending it in write */
@@ -8466,7 +8466,7 @@ static word32 NextCert(byte* data, word32 length, word32* idx)
  * offset    index offset
  * returns   Total number of bytes written.
  */
-static word32 WriteCSRToBuffer(WOLFSSL* ssl, DerBuffer** certExts,
+static int WriteCSRToBuffer(WOLFSSL* ssl, DerBuffer** certExts,
                                 word16* extSz,  word16 extSz_num)
 {
     int    ret = 0;
@@ -8484,7 +8484,7 @@ static word32 WriteCSRToBuffer(WOLFSSL* ssl, DerBuffer** certExts,
 
     if (csr) {
         for (extIdx = 0; extIdx < (word16)(extSz_num); extIdx++) {
-            tmpSz = TLSX_CSR_GetSize_ex(csr, 0, extIdx);
+            tmpSz = TLSX_CSR_GetSize_ex(csr, 0, (int)extIdx);
 
             if (tmpSz > (OPAQUE8_LEN + OPAQUE24_LEN) &&
                 certExts[extIdx] == NULL) {
@@ -8519,7 +8519,7 @@ static word32 WriteCSRToBuffer(WOLFSSL* ssl, DerBuffer** certExts,
         /* chain cert empty extension size */
         totalSz += OPAQUE16_LEN * extSz_num;
     }
-    return totalSz;
+    return (int)totalSz;
 }
 #endif /* HAVE_CERTIFICATE_STATUS_REQUEST */
 /* Add certificate data and empty extension to output up to the fragment size.
