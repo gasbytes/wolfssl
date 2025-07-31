@@ -24327,6 +24327,7 @@ int CreateOcspRequest(WOLFSSL* ssl, OcspRequest* request,
     ret = ParseCertRelative(cert, CERT_TYPE, VERIFY, SSL_CM(ssl), NULL);
     if (ret != 0) {
         WOLFSSL_MSG("ParseCert failed");
+        WOLFSSL_ERROR_VERBOSE(ret);
     }
     if (ret == 0)
         ret = InitOcspRequest(request, cert, 0, ssl->heap);

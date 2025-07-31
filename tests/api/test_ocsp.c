@@ -658,3 +658,113 @@ int test_ocsp_certid_enc_dec(void)
     return TEST_SKIPPED;
 }
 #endif
+
+#if defined(HAVE_OCSP) && defined(HAVE_SSL_MEMIO_TESTS_DEPENDENCIES) && \
+    defined(HAVE_CERTIFICATE_STATUS_REQUEST) && !defined(WOLFSSL_NO_TLS12) && \
+    defined(OPENSSL_ALL)
+
+/* callback context */
+typedef struct {
+    const byte* resp;
+    int         respSz;
+    int         invoked;
+} dyn_ocsp_ctx;
+
+/* callback for OCSP stapling */
+static int dyn_ocsp_cb(void* ctx, const char* url, int urlSz,
+                       unsigned char* req, int reqSz,
+                       unsigned char** respBuf)
+{
+    dyn_ocsp_ctx* dctx = (dyn_ocsp_ctx*)ctx;
+    (void)url; (void)urlSz; (void)req; (void)reqSz;
+
+    dctx->invoked++;
+    *respBuf = (byte*)dctx->resp;
+    return dctx->respSz;
+}
+
+/* this is executed during the handshake at runtime when wolfSSL needs a certificate */
+static int dyn_cert_cb(WOLFSSL* ssl, void* arg)
+{
+    dyn_ocsp_ctx* dctx = (dyn_ocsp_ctx*)arg;
+
+    /* dynamically load server leaf cert + key */
+    if (wolfSSL_use_certificate_file(ssl,
+            "./certs/ocsp/server1-cert.pem", WOLFSSL_FILETYPE_PEM) != SSL_SUCCESS)
+        return 0;
+    if (wolfSSL_use_PrivateKey_file(ssl,
+            "./certs/ocsp/server1-key.pem", WOLFSSL_FILETYPE_PEM) != SSL_SUCCESS)
+        return 0;
+
+    /* hook OCSP callback and enable stapling */
+    if (wolfSSL_SetOCSP_Cb(ssl, dyn_ocsp_cb, NULL, dctx) != WOLFSSL_SUCCESS)
+        return 0;
+    if (wolfSSL_EnableOCSPStapling(ssl) != WOLFSSL_SUCCESS)
+        return 0;
+
+    return 1;
+}
+
+/* called once the server’s WOLFSSL_CTX is ready */
+static int dyn_server_ctx_ready(WOLFSSL_CTX* ctx)
+{
+    extern dyn_ocsp_ctx g_dyn_ctx;
+
+    /* enable OCSP stapling in the CTX and register cert callback */
+    if (wolfSSL_CTX_EnableOCSPStapling(ctx) != WOLFSSL_SUCCESS)
+        return TEST_FAIL;
+
+    wolfSSL_CTX_set_cert_cb(ctx, dyn_cert_cb, &g_dyn_ctx);
+    return TEST_SUCCESS;
+}
+
+/* global so the ctx_ready hook can see it */
+dyn_ocsp_ctx g_dyn_ctx;
+
+int test_ocsp_dynamic_cert_stapling(void)
+{
+    EXPECT_DECLS;
+    struct test_ssl_memio_ctx mem_ctx;
+    XFILE f          = NULL;
+    byte  respBuf[4096];
+
+    /* load canned OCSP response that matches server1-cert.pem */
+    f = XFOPEN("./certs/ocsp/test-leaf-response.der", "rb");
+    ExpectNotNull(f);
+    g_dyn_ctx.respSz = (int)XFREAD(respBuf, 1, sizeof(respBuf), f);
+    if (f != NULL) XFCLOSE(f);
+    g_dyn_ctx.resp    = respBuf;
+    g_dyn_ctx.invoked = 0;
+
+    XMEMSET(&mem_ctx, 0, sizeof(mem_ctx));
+
+    /* client trusts the Root CA; server gets its cert via callback only */
+    mem_ctx.c_cb.caPemFile = "./certs/ocsp/root-ca-cert.pem";
+    mem_ctx.c_cb.method    = wolfTLSv1_2_client_method;
+
+    mem_ctx.s_cb.method    = wolfTLSv1_2_server_method;
+    mem_ctx.s_cb.ctx_ready = dyn_server_ctx_ready;
+
+    ExpectIntEQ(test_ssl_memio_setup(&mem_ctx), TEST_SUCCESS);
+
+    /* client requests OCSP stapling */
+    ExpectIntEQ(wolfSSL_UseOCSPStapling(mem_ctx.c_ssl,
+                                        WOLFSSL_CSR_OCSP, 0), WOLFSSL_SUCCESS);
+    ExpectIntEQ(wolfSSL_CTX_EnableOCSPStapling(mem_ctx.c_ctx), WOLFSSL_SUCCESS);
+
+    wolfSSL_set_verify(mem_ctx.c_ssl, WOLFSSL_VERIFY_NONE, NULL);
+
+    ExpectIntEQ(test_ssl_memio_do_handshake(&mem_ctx, 10, NULL), TEST_SUCCESS);
+
+    ExpectIntGT(g_dyn_ctx.invoked, 0);
+
+    test_ssl_memio_cleanup(&mem_ctx);
+    return EXPECT_RESULT();
+}
+
+#else
+int test_ocsp_dynamic_cert_stapling(void)
+{
+    return TEST_SKIPPED;
+}
+#endif

@@ -68909,6 +68909,7 @@ TEST_CASE testCases[] = {
     TEST_DECL(test_wolfSSL_OCSP_resp_get0),
     TEST_DECL(test_wolfSSL_OCSP_parse_url),
     TEST_DECL(test_wolfSSL_OCSP_REQ_CTX),
+    TEST_DECL(test_ocsp_dynamic_cert_stapling),
 
     TEST_DECL(test_wolfSSL_PEM_read),
 
