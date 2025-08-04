@@ -696,10 +696,13 @@ static int dyn_cert_cb(WOLFSSL* ssl, void* arg)
             "./certs/ocsp/server1-key.pem", WOLFSSL_FILETYPE_PEM) != SSL_SUCCESS)
         return 0;
 
-    /* hook OCSP callback and enable stapling */
-    if (wolfSSL_SetOCSP_Cb(ssl, dyn_ocsp_cb, NULL, dctx) != WOLFSSL_SUCCESS)
-        return 0;
+    /* enable stapling */
     if (wolfSSL_EnableOCSPStapling(ssl) != WOLFSSL_SUCCESS)
+        return 0;
+
+    /* hook OCSP callback (done after stapling is enabled to avoid the default callback
+    to be written over) */
+    if (wolfSSL_SetOCSP_Cb(ssl, dyn_ocsp_cb, NULL, dctx) != WOLFSSL_SUCCESS)
         return 0;
 
     return 1;
@@ -756,6 +759,7 @@ int test_ocsp_dynamic_cert_stapling(void)
 
     ExpectIntEQ(test_ssl_memio_do_handshake(&mem_ctx, 10, NULL), TEST_SUCCESS);
 
+    /* check that the OCSP callback was invoked */
     ExpectIntGT(g_dyn_ctx.invoked, 0);
 
     test_ssl_memio_cleanup(&mem_ctx);
