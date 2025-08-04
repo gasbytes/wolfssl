@@ -24324,7 +24324,11 @@ int CreateOcspRequest(WOLFSSL* ssl, OcspRequest* request,
 
     InitDecodedCert(cert, certData, length, ssl->heap);
     /* TODO: Setup async support here */
+#ifndef WOLFSSL_OCSP_SKIP_CERT_VERIFY
     ret = ParseCertRelative(cert, CERT_TYPE, VERIFY, SSL_CM(ssl), NULL);
+#else
+    ret = ParseCertRelative(cert, CERT_TYPE, NO_VERIFY, SSL_CM(ssl), NULL);
+#endif
     if (ret != 0) {
         WOLFSSL_MSG("ParseCert failed");
         WOLFSSL_ERROR_VERBOSE(ret);

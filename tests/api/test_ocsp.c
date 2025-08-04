@@ -661,7 +661,7 @@ int test_ocsp_certid_enc_dec(void)
 
 #if defined(HAVE_OCSP) && defined(HAVE_SSL_MEMIO_TESTS_DEPENDENCIES) && \
     defined(HAVE_CERTIFICATE_STATUS_REQUEST) && !defined(WOLFSSL_NO_TLS12) && \
-    defined(OPENSSL_ALL)
+    defined(OPENSSL_ALL) && defined(WOLFSSL_OCSP_SKIP_CERT_VERIFY)
 
 /* callback context */
 typedef struct {
