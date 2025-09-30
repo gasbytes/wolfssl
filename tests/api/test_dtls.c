@@ -1474,6 +1474,90 @@ int test_dtls_drop_client_ack(void)
     return EXPECT_RESULT();
 }
 
+int test_dtls_bogus_finished_post_handshake(void)
+{
+    EXPECT_DECLS;
+#if defined(HAVE_MANUAL_MEMIO_TESTS_DEPENDENCIES) && defined(WOLFSSL_DTLS) && \
+    !defined(WOLFSSL_NO_TLS12) && defined(HAVE_AES_CBC) && \
+    defined(WOLFSSL_AES_128) && !defined(NO_SHA256) && !defined(NO_PSK)
+    WOLFSSL_CTX *ctx_c = NULL, *ctx_s = NULL;
+    WOLFSSL *ssl_c = NULL, *ssl_s = NULL;
+    struct test_memio_ctx test_ctx;
+    byte app_data[8];
+    byte msg_buf[256];
+    int error;
+
+    /* Unencrypted bogus Finished message - should be rejected after handshake completion
+     * This is a simple DTLS handshake record with a Finished message payload that would
+     * be inappropriate to receive after handshake completion */
+    static const unsigned char bogus_finished[] = {
+        0x16, 0xfe, 0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x18, 0x14, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x0c, 0xd9, 0xc6, 0xe3, 0x01, 0x59, 0xf2, 0xc2, 0x4f, 0xfa, 0xfd, 0x20,
+        0xd7
+    };
+
+    XMEMSET(&test_ctx, 0, sizeof(test_ctx));
+
+    /* setting up dtls 1.2 contexts with PSK */
+    ExpectIntEQ(test_memio_setup(&test_ctx, &ctx_c, &ctx_s, &ssl_c, &ssl_s,
+            wolfDTLSv1_2_client_method, wolfDTLSv1_2_server_method), 0);
+
+    /* Set PSK cipher suite matching the issue report */
+    ExpectIntEQ(wolfSSL_set_cipher_list(ssl_c, "PSK-AES128-CBC-SHA256"), 1);
+    ExpectIntEQ(wolfSSL_set_cipher_list(ssl_s, "PSK-AES128-CBC-SHA256"), 1);
+
+    /* Set PSK callbacks */
+    wolfSSL_set_psk_client_callback(ssl_c, my_psk_client_cb);
+    wolfSSL_set_psk_server_callback(ssl_s, my_psk_server_cb);
+
+    /* Complete handshake */
+    ExpectIntEQ(test_memio_do_handshake(ssl_c, ssl_s, 10, NULL), 0);
+
+    /* we write some data to confirm that the handshake has completed
+     * and we are ready to exchange application data */
+    ExpectIntEQ(wolfSSL_write(ssl_c, "test", 4), 4);
+    ExpectIntEQ(wolfSSL_read(ssl_s, app_data, sizeof(app_data)), 4);
+
+    /* Clear server receive buffer to inject bogus finished message */
+    test_memio_clear_buffer(&test_ctx, 0);
+
+    /* Inject the bogus finished message after handshake completion */
+    ExpectIntEQ(test_memio_inject_message(&test_ctx, 0,
+            (const char*)bogus_finished, sizeof(bogus_finished)), 0);
+    ExpectIntEQ(test_ctx.s_msg_count, 1);
+    ExpectIntEQ(test_ctx.s_msg_sizes[0], sizeof(bogus_finished));
+
+    /* we process the injected message, this should fail, if it returns the size of
+     * the message it means that the client correctly processed the bogus finished message
+     * */
+    ExpectIntEQ(wolfSSL_read(ssl_s, msg_buf, sizeof(msg_buf)), sizeof(bogus_finished));
+
+    /* client should terminate with dtls sequence error,
+     * since that's not the time or place for a finished packet (handshake
+     * has already terminated) we should just exchange data right now. */
+    error = wolfSSL_get_error(ssl_c, -1);
+
+    /* Server should terminate with appropriate error when receiving bogus finished
+     * after handshake completion - expecting SEQUENCE_ERROR or similar */
+    ExpectTrue(error == WC_NO_ERR_TRACE(SEQUENCE_ERROR) ||
+               error == WC_NO_ERR_TRACE(WOLFSSL_ERROR_WANT_READ));
+
+    /* Test that subsequent application data fails (connection should be terminated) */
+    ExpectIntEQ(wolfSSL_write(ssl_c, "after-bogus", 11), -1);
+    error = wolfSSL_get_error(ssl_c, -1);
+
+    /* Should not be just waiting for data */
+    ExpectTrue(error != WOLFSSL_ERROR_WANT_READ);
+
+    wolfSSL_free(ssl_c);
+    wolfSSL_CTX_free(ctx_c);
+    wolfSSL_free(ssl_s);
+    wolfSSL_CTX_free(ctx_s);
+#endif
+    return EXPECT_RESULT();
+}
+
 int test_dtls_replay(void)
 {
     EXPECT_DECLS;
