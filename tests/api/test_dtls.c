@@ -4220,6 +4220,60 @@ int test_wolfSSL_dtls_AEAD_limit(void)
 }
 #endif
 
+/* Checks that a DTLS 1.3 sender does not keep sending under the same epoch
+ * once its send sequence number has wrapped back to zero. */
+int test_dtls13_seq_num_wrap(void)
+{
+    EXPECT_DECLS;
+#if defined(WOLFSSL_DTLS13) && defined(HAVE_MANUAL_MEMIO_TESTS_DEPENDENCIES) \
+    && defined(BUILD_TLS_CHACHA20_POLY1305_SHA256) \
+    && !defined(NO_WOLFSSL_CLIENT) && !defined(NO_WOLFSSL_SERVER)
+    WOLFSSL_CTX *ctx_c = NULL, *ctx_s = NULL;
+    WOLFSSL *ssl_c = NULL, *ssl_s = NULL;
+    struct test_memio_ctx test_ctx;
+    Dtls13Epoch* epoch = NULL;
+    w64wrapper epochNumber;
+    char msg[] = "wrap";
+    char readBuf[16];
+
+    XMEMSET(&test_ctx, 0, sizeof(test_ctx));
+    test_ctx.c_ciphers = test_ctx.s_ciphers = "TLS13-CHACHA20-POLY1305-SHA256";
+
+    ExpectIntEQ(test_memio_setup(&test_ctx, &ctx_c, &ctx_s, &ssl_c, &ssl_s,
+                    wolfDTLSv1_3_client_method, wolfDTLSv1_3_server_method), 0);
+    ExpectIntEQ(test_memio_do_handshake(ssl_c, ssl_s, 10, NULL), 0);
+
+    /* Settle the application-data epoch before touching its counter. */
+    ExpectIntEQ(wolfSSL_write(ssl_c, msg, (int)sizeof(msg)), (int)sizeof(msg));
+    ExpectIntEQ(wolfSSL_read(ssl_s, readBuf, (int)sizeof(readBuf)),
+                (int)sizeof(msg));
+
+    /* Park the send counter on the last sequence number of the epoch. */
+    if (EXPECT_SUCCESS()) {
+        epochNumber = ssl_c->dtls13Epoch;
+        ExpectNotNull(epoch = Dtls13GetEpoch(ssl_c, epochNumber));
+    }
+    if (EXPECT_SUCCESS())
+        epoch->nextSeqNumber = w64From32(0xFFFFFFFF, 0xFFFFFFFF);
+
+    /* Refusing the record or rotating keys is fine, accepting it under the
+     * same epoch with the counter back at zero is not. */
+    if (EXPECT_SUCCESS()) {
+        if (wolfSSL_write(ssl_c, msg, (int)sizeof(msg)) > 0 &&
+                w64Equal(ssl_c->dtls13Epoch, epochNumber)) {
+            ExpectFalse(w64IsZero(
+                Dtls13GetEpoch(ssl_c, epochNumber)->nextSeqNumber));
+        }
+    }
+
+    wolfSSL_free(ssl_c);
+    wolfSSL_CTX_free(ctx_c);
+    wolfSSL_free(ssl_s);
+    wolfSSL_CTX_free(ctx_s);
+#endif
+    return EXPECT_RESULT();
+}
+
 #if defined(WOLFSSL_DTLS) && \
     defined(HAVE_IO_TESTS_DEPENDENCIES) && !defined(SINGLE_THREADED) && \
     !defined(DEBUG_VECTOR_REGISTER_ACCESS_FUZZING)

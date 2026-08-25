@@ -115,6 +115,7 @@ int test_wolfSSL_dtls_fragments(void);
 int test_wolfSSL_ignore_alert_before_cookie(void);
 int test_wolfSSL_dtls_bad_record(void);
 int test_wolfSSL_dtls_AEAD_limit(void);
+int test_dtls13_seq_num_wrap(void);
 int test_wolfSSL_dtls_stateless(void);
 int test_wolfSSL_dtls_stateless_hrr_group(void);
 int test_wolfSSL_DtlsUpdateWindow(void);
@@ -168,6 +169,7 @@ int test_WOLFSSL_dtls_version_alert(void);
         TEST_DECL_GROUP("dtls", test_wolfSSL_ignore_alert_before_cookie),      \
         TEST_DECL_GROUP("dtls", test_wolfSSL_dtls_bad_record),                 \
         TEST_DECL_GROUP("dtls", test_wolfSSL_dtls_AEAD_limit),                 \
+        TEST_DECL_GROUP("dtls", test_dtls13_seq_num_wrap),                     \
         TEST_DECL_GROUP("dtls", test_wolfSSL_dtls_stateless),                  \
         TEST_DECL_GROUP("dtls", test_wolfSSL_dtls_stateless_hrr_group),        \
         TEST_DECL_GROUP("dtls", test_wolfSSL_DtlsUpdateWindow),                \

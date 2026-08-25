@@ -2400,11 +2400,16 @@ int Dtls13GetSeq(WOLFSSL* ssl, int order, word32* seq, byte increment)
 #endif /* WOLFSSL_DEBUG_TLS */
 
     if (increment) {
-        w64Increment(nativeSeq);
+        w64wrapper next = *nativeSeq;
 
-        /* seq number wrapped up */
-        if (w64IsZero(*nativeSeq))
+        w64Increment(&next);
+
+        /* seq number wrapped up, leave the counter unconsumed so that a retry
+           cannot protect a second record with the same nonce */
+        if (w64IsZero(next))
             return BAD_STATE_E;
+
+        *nativeSeq = next;
     }
 
     return 0;

@@ -2475,14 +2475,19 @@ static void AddTls13FragHeaders(byte* output, word32 fragSz, word32 fragOffset,
  * ssl          The SSL/TLS object.
  * verifyOrder  Which set of sequence numbers to use.
  * out          The buffer to write into.
+ * returns 0 on success, otherwise failure.
  */
-static WC_INLINE void WriteSEQTls13(WOLFSSL* ssl, int verifyOrder, byte* out)
+static WC_INLINE int WriteSEQTls13(WOLFSSL* ssl, int verifyOrder, byte* out)
 {
     word32 seq[2] = {0, 0};
+    int ret;
 
     if (ssl->options.dtls) {
 #ifdef WOLFSSL_DTLS13
-        Dtls13GetSeq(ssl, verifyOrder, seq, 1);
+        ret = Dtls13GetSeq(ssl, verifyOrder, seq, 1);
+
+        if (ret != 0)
+            return ret;
 #endif /* WOLFSSL_DTLS13 */
     }
     else if (verifyOrder == PEER_ORDER) {
@@ -2505,6 +2510,8 @@ static WC_INLINE void WriteSEQTls13(WOLFSSL* ssl, int verifyOrder, byte* out)
 
     c32toa(seq[0], out);
     c32toa(seq[1], out + OPAQUE32_LEN);
+
+    return 0;
 }
 
 /* Build the nonce for TLS v1.3 encryption and decryption.
@@ -2513,19 +2520,25 @@ static WC_INLINE void WriteSEQTls13(WOLFSSL* ssl, int verifyOrder, byte* out)
  * nonce  The nonce data to use when encrypting or decrypting.
  * iv     The derived IV.
  * order  The side on which the message is to be or was sent.
+ * returns 0 on success, otherwise failure.
  */
-static WC_INLINE void BuildTls13Nonce(WOLFSSL* ssl, byte* nonce, const byte* iv,
+static WC_INLINE int BuildTls13Nonce(WOLFSSL* ssl, byte* nonce, const byte* iv,
                                    int ivSz, int order)
 {
     int seq_offset;
+    int ret;
     /* Ensure minimum nonce size for standard AEAD ciphers */
     if (ivSz < AEAD_NONCE_SZ)
         ivSz = AEAD_NONCE_SZ;
     seq_offset = ivSz - SEQ_SZ;
     /* The nonce is the IV with the sequence XORed into the last bytes. */
-    WriteSEQTls13(ssl, order, nonce + seq_offset);
+    ret = WriteSEQTls13(ssl, order, nonce + seq_offset);
+    if (ret != 0)
+        return ret;
     XMEMCPY(nonce, iv, seq_offset);
     xorbuf(nonce + seq_offset, iv + seq_offset, SEQ_SZ);
+
+    return 0;
 }
 
 #if defined(HAVE_CHACHA) && defined(HAVE_POLY1305)
@@ -2675,8 +2688,11 @@ static int EncryptTls13(WOLFSSL* ssl, byte* output, const byte* input,
             if (ssl->encrypt.nonce == NULL)
                 return MEMORY_E;
 
-            BuildTls13Nonce(ssl, ssl->encrypt.nonce, ssl->keys.aead_enc_imp_IV,
-                            ssl->specs.iv_size, CUR_ORDER);
+            ret = BuildTls13Nonce(ssl, ssl->encrypt.nonce,
+                            ssl->keys.aead_enc_imp_IV, ssl->specs.iv_size,
+                            CUR_ORDER);
+            if (ret != 0)
+                return ret;
         #endif
 
             /* Advance state and proceed */
@@ -3053,8 +3069,11 @@ int DecryptTls13(WOLFSSL* ssl, byte* output, const byte* input, word16 sz,
             if (ssl->decrypt.nonce == NULL)
                 return MEMORY_E;
 
-            BuildTls13Nonce(ssl, ssl->decrypt.nonce, ssl->keys.aead_dec_imp_IV,
-                            ssl->specs.iv_size, PEER_ORDER);
+            ret = BuildTls13Nonce(ssl, ssl->decrypt.nonce,
+                            ssl->keys.aead_dec_imp_IV, ssl->specs.iv_size,
+                            PEER_ORDER);
+            if (ret != 0)
+                return ret;
         #endif
 
             /* Advance state and proceed */
